@@ -16,13 +16,18 @@ type Summary = {
   summary_text?: string;
 };
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 // --- Helper Function to Poll Run Status ---
 async function pollRunStatus(
   threadId: string,
   runId: string,
 ): Promise<OpenAI.Beta.Threads.Runs.Run> {
+  if (!openai) {
+    throw new Error("OpenAI client not initialized");
+  }
   let run = await openai.beta.threads.runs.retrieve(threadId, runId);
   while (run.status === "queued" || run.status === "in_progress") {
     // Wait for a short period before polling again
@@ -35,7 +40,7 @@ async function pollRunStatus(
 
 // --- API Route Handler ---
 export async function POST(request: NextRequest) {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!openai) {
     console.error("OpenAI API key not configured");
     return NextResponse.json(
       { error: "Server configuration error: OpenAI API key missing" },
